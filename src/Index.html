@@ -1,0 +1,247 @@
+
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Logboek terrein Commissie v6</title>
+
+  <!-- Bootstrap & DataTables CSS -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.10.23/css/dataTables.bootstrap4.min.css" />
+
+  <style>
+    dialog::backdrop {
+      background: rgba(60, 179, 113, 0.5);
+    }
+    dialog {
+      border: 1px solid rgba(0, 255, 0, 0.5);
+      border-radius: 10px;
+      padding: 20px;
+      width: 80%;
+      max-width: 600px;
+    }
+    .dialog-close {
+      float: right;
+      font-size: 20px;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+    }
+  </style>
+</head>
+<body>
+  <div class="container mt-5">
+    <!-- Modal Form -->
+    <dialog id="entryDialog">
+      <button class="dialog-close" onclick="document.getElementById('entryDialog').close()">×</button>
+      <h2>Nieuwe activiteit</h2>
+      <form id="myForm">
+        <div class="form-group">
+          <label for="wat">Wat:</label>
+          <input type="text" id="wat" name="wat" class="form-control" required />
+        </div>
+        <div class="form-group">
+          <label for="waarom">Waarom:</label>
+          <input type="text" id="waarom" name="waarom" class="form-control" required />
+        </div>
+        <div class="form-group">
+          <label for="lidnummer">Lidnummer:</label>
+          <input type="text" id="lidnummer" name="lidnummer" class="form-control" required />
+        </div>
+        <div class="form-group">
+          <label for="objectnummer">Object nummer:</label>
+          <input type="text" id="objectnummer" name="objectnummer" class="form-control" required />
+        </div>
+        <div class="form-group">
+          <label for="ligplaats">Ligplaats:</label>
+          <input type="text" id="ligplaats" name="ligplaats" class="form-control" required />
+        </div>
+        <div class="form-group">
+          <label for="bestanden">Upload PDF-bestanden:</label>
+          <input type="file" id="bestanden" name="bestanden" class="form-control-file" accept="application/pdf" multiple required />
+          <small class="form-text text-muted">Alleen PDF toegestaan.</small>
+        </div>
+
+        <button type="button" class="btn btn-primary" onclick="submitForm()">Verzenden</button>
+      </form>
+    </dialog>
+
+    <!-- Open Modal Button -->
+    <button class="btn btn-success mb-3" id="openDialogBtn">Nieuwe actie</button>
+
+    <!-- Data Table -->
+    <h4>Logboek terrein Commissie v6</h4>
+    <table id="dataTable" class="table table-striped table-bordered" style="width: 100%">
+      <thead>
+        <tr>
+          <th>Datum</th>
+          <th>Wat</th>
+          <th>Waarom</th>
+          <th>Lidnummer</th>
+          <th>Object nummer</th>
+          <th>Ligplaats</th>
+        </tr>
+        <tr>
+          <th><input type="text" placeholder="Zoek datum" class="form-control form-control-sm" /></th>
+          <th><input type="text" placeholder="Zoek wat" class="form-control form-control-sm" /></th>
+          <th><input type="text" placeholder="Zoek waarom" class="form-control form-control-sm" /></th>
+          <th><input type="text" placeholder="Zoek lidnummer" class="form-control form-control-sm" /></th>
+          <th><input type="text" placeholder="Zoek object" class="form-control form-control-sm" /></th>
+          <th><input type="text" placeholder="Zoek ligplaats" class="form-control form-control-sm" /></th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- JS Libraries -->
+  <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+  <script src="https://cdn.datatables.net/1.10.23/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/1.10.23/js/dataTables.bootstrap4.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+
+  <script>
+    $(document).ready(function () {
+      const dialog = document.getElementById("entryDialog");
+
+      document.getElementById("openDialogBtn").addEventListener("click", () => {
+        dialog.showModal();
+      });
+
+      // Laad data vanuit Google Sheets
+      google.script.run
+        .withSuccessHandler(onSuccess)
+        .withFailureHandler(() => console.error("Fout bij het laden van gegevens."))
+        .getSheetData();
+    });
+
+    function onSuccess(rawData) {
+      const dataSheet = JSON.parse(rawData);
+      dataSheet.shift(); // Verwijder headers
+
+      const table = $("#dataTable").DataTable({
+        order: [[0, "desc"]],
+        orderCellsTop: true,   // ✅ voorkomt dubbele headers
+        searching: true,       // ✅ activeert zoeken
+        data: dataSheet.map(row => [
+          row[0], // Datum
+          row[1], // Wat
+          row[2], // Waarom
+          row[5], // Lidnummer
+          row[6], // Object nummer
+          row[7], // Ligplaats
+        ]),
+        columns: [
+          { title: "Datum" },
+          { title: "Wat" },
+          { title: "Waarom" },
+          { title: "Lidnummer" },
+          { title: "Object nummer" },
+          { title: "Ligplaats" },
+        ],
+        columnDefs: [
+          {
+            targets: 0,
+            render: function (data, type) {
+              return type === "display" || type === "filter"
+                ? moment(data).format("YYYY-MM-DD")
+                : data;
+            },
+          },
+        ],
+      });
+
+      // Koppel zoekvelden aan kolommen
+      $("#dataTable thead tr:eq(1) th input").each(function (index) {
+        $(this).on("keyup change", function () {
+          if (table.column(index).search() !== this.value) {
+            table.column(index).search(this.value).draw();
+          }
+        });
+      });
+
+      // Voeg extra knop toe
+      const customButton = $('<button>')
+        .text('Nieuwe actie toevoegen')
+        .addClass('btn btn-outline-primary ml-3')
+        .on('click', () => {
+          document.getElementById('entryDialog').showModal();
+        });
+
+      $('.dataTables_filter').append(customButton);
+    }
+function submitForm() {
+    const wat = document.getElementById("wat").value.trim();
+    const waarom = document.getElementById("waarom").value.trim();
+    const lidnummer = document.getElementById("lidnummer").value.trim();
+    const objectnummer = document.getElementById("objectnummer").value.trim();
+    const ligplaats = document.getElementById("ligplaats").value.trim();
+    const bestandenInput = document.getElementById("bestanden");
+    const files = bestandenInput.files;
+
+    if (!wat || !waarom || !lidnummer || !objectnummer || !ligplaats) {
+      alert("Vul alstublieft alle velden in.");
+      return;
+    }
+
+    if (files.length === 0) {
+      alert("Selecteer minstens één PDF-bestand.");
+      return;
+    }
+
+    // Controleer bestandstype
+    for (let file of files) {
+      if (file.type !== "application/pdf") {
+        alert("Alleen PDF-bestanden zijn toegestaan.");
+        return;
+      }
+    }
+
+    const today = new Date();
+    const date = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, '0') + "-" + String(today.getDate()).padStart(2, '0');
+    const hoe = "";
+    const wie = "";
+
+    // Meerdere bestanden lezen en uploaden
+    const uploadedLinks = [];
+    let filesProcessed = 0;
+
+    for (let file of files) {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const data = e.target.result.split(",")[1]; // base64
+        google.script.run
+          .withSuccessHandler(function (link) {
+            uploadedLinks.push(link);
+            filesProcessed++;
+            if (filesProcessed === files.length) {
+              finalizeSubmit(date, wat, waarom, hoe, wie, lidnummer, objectnummer, ligplaats, uploadedLinks.join(", "));
+            }
+          })
+          .withFailureHandler(function () {
+            alert("Fout bij uploaden van bestand: " + file.name);
+          })
+          .uploadFileToDrive({
+            filename: file.name,
+            mimeType: file.type,
+            data: data
+          });
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  function finalizeSubmit(date, wat, waarom, hoe, wie, lidnummer, objectnummer, ligplaats, bestandsLinks) {
+    google.script.run.submitFormToSheet(date, wat, waarom, hoe, wie, lidnummer, objectnummer, ligplaats, bestandsLinks);
+    document.getElementById("myForm").reset();
+    document.getElementById("entryDialog").close();
+  }
+
+
+
+  </script>
+</body>
+</html>
